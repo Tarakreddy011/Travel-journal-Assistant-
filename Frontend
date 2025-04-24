@@ -1,0 +1,176 @@
+from flask import Flask, request, jsonify, render_template, send_from_directory
+import os
+import uuid
+from datetime import datetime
+import google.generativeai as genai
+from dotenv import load_dotenv
+from werkzeug.utils import secure_filename
+
+# Load environment variables
+load_dotenv()
+
+app = Flask(__name__, template_folder='templates', static_folder='static')
+
+# Configuration
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
+
+# Initialize Gemini
+def initialize_gemini():
+    try:
+        genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+        
+        # Updated model name to the current version
+        model = genai.GenerativeModel(
+            'gemini-1.5-pro-latest',
+            generation_config={
+                "max_output_tokens": 2000,
+                "temperature": 0.7,
+                "top_p": 0.9,
+            },
+            safety_settings={
+                'HARASSMENT': 'block_none',
+                'HATE_SPEECH': 'block_none',
+                'SEXUAL': 'block_none',
+                'DANGEROUS': 'block_none'
+            }
+        )
+        print("✅ Gemini API connected successfully")
+        return model
+    except Exception as e:
+        print(f"❌ Gemini API connection failed: {str(e)}")
+        return None
+
+model = initialize_gemini()
+
+# Mock database
+journal_entries = []
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/')
+def index():
+    return render_template('Frontend.html')
+
+@app.route('/api/entries', methods=['GET', 'POST'])
+def handle_entries():
+    if request.method == 'GET':
+        return jsonify({
+            'success': True,
+            'entries': journal_entries,
+            'count': len(journal_entries)
+        })
+    
+    if request.method == 'POST':
+        try:
+            # Process tags
+            raw_tags = request.form.get('tags', '')
+            processed_tags = [tag.strip() for tag in raw_tags.split(',') if tag.strip()]
+            
+            # Handle file upload
+            photo_url = None
+            if 'photo' in request.files:
+                photo = request.files['photo']
+                if photo.filename != '' and allowed_file(photo.filename):
+                    filename = f"{uuid.uuid4().hex}_{secure_filename(photo.filename)}"
+                    photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                    photo_url = f"/static/uploads/{filename}"
+
+            entry = {
+                'id': str(uuid.uuid4()),
+                'title': request.form.get('title', '').strip(),
+                'date': request.form.get('date', datetime.now().strftime('%Y-%m-%d')),
+                'description': request.form.get('description', '').strip(),
+                'tags': processed_tags,
+                'photo_url': photo_url,
+                'created_at': datetime.now().isoformat()
+            }
+            
+            # Validate required fields
+            if not entry['title']:
+                return jsonify({'success': False, 'error': 'Title is required'}), 400
+            if not entry['description']:
+                return jsonify({'success': False, 'error': 'Description is required'}), 400
+            
+            journal_entries.append(entry)
+            return jsonify({'success': True, 'entry': entry}), 201
+
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/entries/<entry_id>', methods=['DELETE'])
+def delete_entry(entry_id):
+    global journal_entries
+    initial_count = len(journal_entries)
+    journal_entries = [entry for entry in journal_entries if entry['id'] != entry_id]
+    
+    if len(journal_entries) < initial_count:
+        return jsonify({'success': True, 'message': 'Entry deleted successfully'}), 200
+    else:
+        return jsonify({'success': False, 'error': 'Entry not found'}), 404
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    if not model:
+        return jsonify({
+            'success': False,
+            'reply': "Chat service is currently unavailable. Please try again later."
+        }), 503
+
+    data = request.get_json()
+    user_message = data.get('message', '').strip()
+    
+    if not user_message:
+        return jsonify({'success': False, 'reply': "Please enter a message"}), 400
+
+    try:
+        # Enhanced prompt with more specific instructions
+        prompt = f"""You are an expert travel assistant with extensive knowledge of global destinations. 
+        Provide helpful, detailed responses about travel destinations, tips, and recommendations.
+        
+        Current date: {datetime.now().strftime('%Y-%m-%d')}
+        User question: {user_message}
+        
+        Respond in this structured format:
+        [Destination]: Brief introduction (1-2 sentences)
+        [Why Visit]: 2-3 compelling reasons to visit
+        [Highlights]: 3-5 key attractions with brief descriptions
+        [Tips]: Practical travel advice (best time to visit, budget tips, etc.)
+        [Tags]: 3-5 relevant tags like #culture, #adventure, #foodie
+        
+        Keep responses concise but informative, between 150-300 words."""
+        
+        response = model.generate_content(
+            prompt,
+            request_options={'timeout': 15}
+        )
+        
+        if response.text:
+            return jsonify({
+                'success': True,
+                'reply': response.text
+            })
+        
+        return jsonify({
+            'success': False,
+            'reply': "Sorry, I couldn't generate a response. Please try again."
+        }), 500
+
+    except Exception as e:
+        print(f"Chat error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'reply': "Sorry, I encountered an error. Please try again with a different question."
+        }), 500
+
+@app.route('/static/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
