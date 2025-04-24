@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Journal Assistant</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background: linear-gradient(to right, rgba(247, 231, 254, 0.8), rgba(211, 243, 255, 0.8)), 
+                  url('https://images.unsplash.com/photo-1506929562872-bb421503ef21?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      color: #333;
+      min-height: 100vh;
+    }
+    header {
+      background: #fff;
+      padding: 2rem 1rem;
+      text-align: center;
+      border-bottom: 2px solid #eee;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    header h1 {
+      font-size: 2.5rem;
+      color: #5e2ced;
+      margin: 0;
+      font-weight: 700;
+    }
+    header p {
+      margin-top: 0.5rem;
+      color: #777;
+      font-size: 1.1rem;
+    }
+    main {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 1rem;
+    }
+    .journal-form {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 1.5rem;
+      border-radius: 1rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+    .journal-form input[type="text"],
+    .journal-form input[type="date"],
+    .journal-form textarea,
+    .journal-form input[type="file"] {
+      width: 100%;
+      padding: 0.75rem;
+      margin: 0.75rem 0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border 0.3s;
+    }
+    .journal-form input[type="text"]:focus,
+    .journal-form textarea:focus,
+    .journal-form input[type="date"]:focus {
+      border-color: #5e2ced;
+      outline: none;
+    }
+    .journal-form textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    .journal-form button {
+      padding: 0.75rem 2rem;
+      background: #5e2ced;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 600;
+      margin-top: 1rem;
+      display: block;
+      width: 100%;
+    }
+    .journal-form button:hover {
+      background: #431fd9;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .file-input-wrapper {
+      position: relative;
+      margin: 1rem 0;
+    }
+    .file-input-wrapper input[type="file"] {
+      opacity: 0;
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      cursor: pointer;
+    }
+    .file-input-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      background: #f9f9f9;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    .file-input-label:hover {
+      border-color: #5e2ced;
+      background: #f5f0ff;
+    }
+    .file-input-label span {
+      color: #777;
+    }
+    .file-input-label.has-file span {
+      color: #5e2ced;
+      font-weight: 500;
+    }
+    .entries {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .entry {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 1.5rem;
+      border-radius: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: relative;
+      transition: transform 0.3s;
+    }
+    .entry:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .entry h3 {
+      margin-top: 0;
+      color: #5e2ced;
+      font-size: 1.5rem;
+    }
+    .entry img {
+      max-width: 100%;
+      border-radius: 0.75rem;
+      margin-top: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .entry .meta {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .entry .meta svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+    .entry .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .entry .tags span {
+      background: #f0e7ff;
+      color: #5e2ced;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: #ff5252;
+      color: white;
+      border: none;
+      padding: 5px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .delete-btn:hover {
+      background: #e03333;
+      transform: scale(1.05);
+    }
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: #777;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 1rem;
+    }
+
+    /* Enhanced Chatbot Styles */
+    #chatbot-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 380px;
+      height: 500px;
+      background: white;
+      box-shadow: 0 5px 25px rgba(0,0,0,0.15);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      z-index: 9999;
+      transform: translateY(20px);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      border: 1px solid #e0e0e0;
+    }
+    
+    #chatbot-container.visible {
+      transform: translateY(0);
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    #chatbot-header {
+      background: linear-gradient(135deg, #6e3bff 0%, #431fd9 100%);
+      color: white;
+      padding: 1rem;
+      font-weight: 600;
+      text-align: center;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    #chatbot-header::before {
+      content: "✈️";
+      font-size: 1.2rem;
+    }
+    
+    #chatbot-messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      background: #f5f7fb;
+      scrollbar-width: thin;
+      scrollbar-color: #d1d5db #f5f7fb;
+    }
+    
+    #chatbot-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    #chatbot-messages::-webkit-scrollbar-track {
+      background: #f5f7fb;
+      border-radius: 3px;
+    }
+    
+    #chatbot-messages::-webkit-scrollbar-thumb {
+      background-color: #d1d5db;
+      border-radius: 3px;
+    }
+    
+    .chat-msg {
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      line-height: 1.4;
+      position: relative;
+      animation: fadeIn 0.3s ease-out;
+      word-wrap: break-word;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .chat-msg.user {
+      margin-left: auto;
+      background: #6e3bff;
+      color: white;
+      border-bottom-right-radius: 4px;
+      box-shadow: 0 2px 5px rgba(110, 59, 255, 0.2);
+    }
+    
+    .chat-msg.bot {
+      margin-right: auto;
+      background: white;
+      color: #333;
+      border: 1px solid #e0e0e0;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    
+    .chat-msg.bot:first-child::after {
+      content: "";
+      position: absolute;
+      left: -8px;
+      top: 0;
+      width: 0;
+      height: 0;
+      border: 8px solid transparent;
+      border-right-color: white;
+      border-left: 0;
+      margin-top: 15px;
+    }
+    
+    .chat-msg.user:first-child::after {
+      content: "";
+      position: absolute;
+      right: -8px;
+      top: 0;
+      width: 0;
+      height: 0;
+      border: 8px solid transparent;
+      border-left-color: #6e3bff;
+      border-right: 0;
+      margin-top: 15px;
+    }
+    
+    #chatbot-input {
+      display: flex;
+      border-top: 1px solid #e0e0e0;
+      background: white;
+      padding: 12px;
+      align-items: center;
+    }
+    
+    #chatbot-input input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid #e0e0e0;
+      border-radius: 24px;
+      font-size: 0.95rem;
+      margin-right: 10px;
+      outline: none;
+      transition: border 0.3s;
+    }
+    
+    #chatbot-input input:focus {
+      border-color: #6e3bff;
+    }
+    
+    #chatbot-input button {
+      background: #6e3bff;
+      color: white;
+      border: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #chatbot-input button:hover {
+      background: #431fd9;
+      transform: scale(1.05);
+    }
+    
+    .typing-indicator {
+      display: flex;
+      padding: 12px 16px;
+      background: white;
+      border-radius: 18px;
+      border: 1px solid #e0e0e0;
+      width: fit-content;
+      margin-bottom: 1rem;
+    }
+    
+    .typing-indicator span {
+      height: 8px;
+      width: 8px;
+      background: #6e3bff;
+      border-radius: 50%;
+      display: inline-block;
+      margin: 0 2px;
+      opacity: 0.4;
+    }
+    
+    .typing-indicator span:nth-child(1) {
+      animation: typing 1s infinite;
+    }
+    
+    .typing-indicator span:nth-child(2) {
+      animation: typing 1s infinite 0.2s;
+    }
+    
+    .typing-indicator span:nth-child(3) {
+      animation: typing 1s infinite 0.4s;
+    }
+    
+    @keyframes typing {
+      0% { opacity: 0.4; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-3px); }
+      100% { opacity: 0.4; transform: translateY(0); }
+    }
+    
+    @media (max-width: 768px) {
+      #chatbot-container {
+        width: 100%;
+        height: 70vh;
+        bottom: 0;
+        right: 0;
+        border-radius: 16px 16px 0 0;
+      }
+      
+      header h1 {
+        font-size: 2rem;
+      }
+      
+      .journal-form {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>--Life is all about Travel--</h1>
+    <p>How was your last journey experience?</p>
+  </header>
+
+  <main>
+    <form class="journal-form" id="journalForm" enctype="multipart/form-data">
+      <input type="text" id="title" name="title" placeholder="Trip Title" required />
+      <input type="date" id="date" name="date" />
+      <textarea id="description" name="description" placeholder="Share your experience..." rows="5" required></textarea>
+      <input type="text" id="tags" name="tags" placeholder="Add tags (comma separated, e.g. #beach, #hiking)" />
+      
+      <div class="file-input-wrapper">
+        <label for="photo" class="file-input-label" id="file-label">
+          <span id="file-text">Choose a photo or drag here</span>
+        </label>
+        <input type="file" id="photo" name="photo" accept="image/*" />
+      </div>
+      
+      <button type="submit">SAVE ENTRY</button>
+    </form>
+
+    <div class="entries" id="entries">
+      <div class="empty-state" id="empty-state">
+        <p>No entries yet. Add your first travel experience!</p>
+      </div>
+    </div>
+  </main>
+
+  <div id="chatbot-container">
+    <div id="chatbot-header" onclick="toggleChatbot()">Ask me for next Travel Destination</div>
+    <div id="chatbot-messages"></div>
+    <div id="chatbot-input">
+      <input type="text" id="user-message" placeholder="Where to next...?" />
+      <button onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+
+  <script>
+    // File input handling
+    const photoInput = document.getElementById('photo');
+    const fileLabel = document.getElementById('file-label');
+    const fileText = document.getElementById('file-text');
+
+    photoInput.addEventListener('change', function() {
+      if (this.files.length > 0) {
+        fileLabel.classList.add('has-file');
+        fileText.textContent = this.files[0].name;
+      } else {
+        fileLabel.classList.remove('has-file');
+        fileText.textContent = 'Choose a photo or drag here';
+      }
+    });
+
+    // Drag and drop for files
+    fileLabel.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      fileLabel.style.borderColor = '#5e2ced';
+      fileLabel.style.background = '#f5f0ff';
+    });
+
+    fileLabel.addEventListener('dragleave', () => {
+      fileLabel.style.borderColor = '#ccc';
+      fileLabel.style.background = '#f9f9f9';
+    });
+
+    fileLabel.addEventListener('drop', (e) => {
+      e.preventDefault();
+      fileLabel.style.borderColor = '#ccc';
+      fileLabel.style.background = '#f9f9f9';
+      if (e.dataTransfer.files.length) {
+        photoInput.files = e.dataTransfer.files;
+        fileLabel.classList.add('has-file');
+        fileText.textContent = e.dataTransfer.files[0].name;
+      }
+    });
+
+    // Chatbot functionality
+    let isBotTyping = false;
+    
+    function toggleChatbot() {
+      const chatbot = document.getElementById('chatbot-container');
+      chatbot.classList.toggle('visible');
+      
+      if (chatbot.classList.contains('visible')) {
+        document.getElementById('user-message').focus();
+      }
+    }
+    
+    // Show chatbot after delay with animation
+    setTimeout(() => {
+      const chatbot = document.getElementById('chatbot-container');
+      chatbot.classList.add('visible');
+      
+      // Add welcome message
+      setTimeout(() => {
+        appendMessage('bot', "Hello traveler! ✈️ Where would you like to go next? I can recommend destinations, activities, and travel tips!");
+      }, 300);
+    }, 3000);
+    
+    function showTypingIndicator() {
+      const container = document.getElementById('chatbot-messages');
+      const typing = document.createElement('div');
+      typing.className = 'typing-indicator';
+      typing.id = 'typing-indicator';
+      typing.innerHTML = '<span></span><span></span><span></span>';
+      container.appendChild(typing);
+      container.scrollTop = container.scrollHeight;
+    }
+    
+    function removeTypingIndicator() {
+      const typing = document.getElementById('typing-indicator');
+      if (typing) typing.remove();
+    }
+    
+    function appendMessage(sender, text, isHTML = false) {
+      const container = document.getElementById('chatbot-messages');
+      const msg = document.createElement('div');
+      msg.className = `chat-msg ${sender}`;
+      
+      if (isHTML) {
+        msg.innerHTML = text;
+      } else {
+        msg.textContent = text;
+      }
+      
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('user-message');
+      const text = input.value.trim();
+      if (!text || isBotTyping) return;
+      
+      appendMessage('user', text);
+      input.value = '';
+      
+      // Show typing indicator
+      showTypingIndicator();
+      isBotTyping = true;
+      
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+        
+        const data = await response.json();
+        removeTypingIndicator();
+        isBotTyping = false;
+        
+        if (data.reply) {
+          // Format the bot's reply with line breaks
+          const formattedReply = data.reply.replace(/\n/g, '<br>');
+          appendMessage('bot', formattedReply, true);
+        } else {
+          appendMessage('bot', "I couldn't find any information about that. Could you try asking differently?", true);
+        }
+      } catch (e) {
+        removeTypingIndicator();
+        isBotTyping = false;
+        appendMessage('bot', "Oops! I'm having trouble connecting. Please try again later.", true);
+        console.error('Chat error:', e);
+      }
+    }
+    
+    // Handle Enter key and auto-focus
+    document.getElementById('user-message').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    
+    // Auto-focus when clicking anywhere in the input area
+    document.getElementById('chatbot-input').addEventListener('click', function() {
+      document.getElementById('user-message').focus();
+    });
+
+    // Form submission
+    document.getElementById('journalForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(this);
+      
+      try {
+        const response = await fetch('/api/entries', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          addEntryToDOM(data.entry);
+          this.reset();
+          fileLabel.classList.remove('has-file');
+          fileText.textContent = 'Choose a photo or drag here';
+        } else {
+          alert(data.error || 'Failed to save entry');
+        }
+      } catch (error) {
+        alert('Error saving entry: ' + error.message);
+      }
+    });
+
+    // Add entry to DOM
+    function addEntryToDOM(entry) {
+      const entriesDiv = document.getElementById('entries');
+      const emptyState = document.getElementById('empty-state');
+
+      if (emptyState) {
+        emptyState.remove();
+      }
+
+      const entryEl = document.createElement('div');
+      entryEl.className = 'entry';
+      entryEl.setAttribute('data-id', entry.id);
+      
+      // Process tags - handle both string (comma-separated) and array formats
+      let tagsArray = [];
+      if (typeof entry.tags === 'string') {
+        tagsArray = entry.tags.split(',').map(tag => tag.trim());
+      } else if (Array.isArray(entry.tags)) {
+        tagsArray = entry.tags;
+      }
+      
+      const tagsHTML = tagsArray.length > 0 
+        ? `<div class="tags">${tagsArray.map(tag => 
+            `<span>${tag.startsWith('#') ? tag : '#' + tag}</span>`
+          ).join('')}</div>`
+        : '';
+      
+      entryEl.innerHTML = `
+        <button class="delete-btn" onclick="deleteEntry('${entry.id}')">Delete</button>
+        <h3>${entry.title}</h3>
+        ${entry.date ? `
+        <div class="meta">
+          <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/></svg>
+          ${new Date(entry.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+        </div>
+        ` : ''}
+        <p>${entry.description}</p>
+        ${tagsHTML}
+        ${entry.photo_url ? `<img src="${entry.photo_url}" alt="${entry.title}" />` : ''}
+      `;
+
+      entriesDiv.prepend(entryEl);
+    }
+
+    // Delete entry
+    async function deleteEntry(id) {
+      if (confirm('Are you sure you want to delete this entry?')) {
+        try {
+          const response = await fetch(`/api/entries/${id}`, {
+            method: 'DELETE'
+          });
+          
+          if (response.ok) {
+            document.querySelector(`.entry[data-id="${id}"]`)?.remove();
+            const entriesDiv = document.getElementById('entries');
+            if (entriesDiv.children.length === 0) {
+              const newEmptyState = document.createElement('div');
+              newEmptyState.className = 'empty-state';
+              newEmptyState.id = 'empty-state';
+              newEmptyState.innerHTML = '<p>No entries yet. Add your first travel experience!</p>';
+              entriesDiv.appendChild(newEmptyState);
+            }
+          }
+        } catch (error) {
+          alert('Error deleting entry');
+        }
+      }
+    }
+
+    // Load existing entries on page load
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const response = await fetch('/api/entries');
+        const data = await response.json();
+        
+        const entriesDiv = document.getElementById('entries');
+        const emptyState = document.getElementById('empty-state');
+        
+        if (data.entries && data.entries.length > 0 && emptyState) {
+          emptyState.remove();
+        }
+        
+        if (data.entries) {
+          data.entries.forEach(entry => {
+            addEntryToDOM(entry);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading entries:', error);
+      }
+    });
+  </script>
+</body>
+</html>
